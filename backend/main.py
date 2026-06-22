@@ -34,6 +34,36 @@ RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "120"))
 _rate_store: Dict[str, List[float]] = {}
 
 
+def _is_romanized(text: str, language: str) -> bool:
+    """Detect if a non-English question was typed in Roman script (Hinglish/Tanglish/Banglish).
+    Heuristic: language != 'en' AND text is pure ASCII (no native script characters).
+    Examples: 'photosynthesis kya hai' → True, 'प्रकाश संश्लेषण' → False.
+    """
+    return language != 'en' and bool(text.strip()) and text.strip().isascii()
+
+
+LANGUAGE_NAMES_FULL = {"hi": "Hindi", "ta": "Tamil", "bn": "Bengali", "en": "English"}
+
+app = FastAPI(title="Vidya Sahayak API", version="2.0.0")
+
+# ── CORS ──────────────────────────────────────────────────────────────────────
+# Configure CORS from environment to avoid allowing all origins in production.
+allowed = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+allow_origins = [o.strip() for o in allowed.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allow_origins or ["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+if "*" in allow_origins:
+    # Warn on wildcard in ALLOWED_ORIGINS - acceptable in local dev but not for prod.
+    print("WARNING: ALLOWED_ORIGINS contains '*'. Consider restricting origins for production.")
+
+
 @app.middleware("http")
 async def _rate_limit_middleware(request: Request, call_next):
     # Check request size via Content-Length header
@@ -63,36 +93,6 @@ async def _rate_limit_middleware(request: Request, call_next):
 
     response = await call_next(request)
     return response
-
-
-def _is_romanized(text: str, language: str) -> bool:
-    """Detect if a non-English question was typed in Roman script (Hinglish/Tanglish/Banglish).
-    Heuristic: language != 'en' AND text is pure ASCII (no native script characters).
-    Examples: 'photosynthesis kya hai' → True, 'प्रकाश संश्लेषण' → False.
-    """
-    return language != 'en' and bool(text.strip()) and text.strip().isascii()
-
-
-LANGUAGE_NAMES_FULL = {"hi": "Hindi", "ta": "Tamil", "bn": "Bengali", "en": "English"}
-
-app = FastAPI(title="Vidya Sahayak API", version="2.0.0")
-
-# ── CORS ──────────────────────────────────────────────────────────────────────
-# Configure CORS from environment to avoid allowing all origins in production.
-allowed = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-allow_origins = [o.strip() for o in allowed.split(",") if o.strip()]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=allow_origins or ["http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-if "*" in allow_origins:
-    # Warn on wildcard in ALLOWED_ORIGINS - acceptable in local dev but not for prod.
-    print("WARNING: ALLOWED_ORIGINS contains '*'. Consider restricting origins for production.")
 
 
 @app.on_event("startup")

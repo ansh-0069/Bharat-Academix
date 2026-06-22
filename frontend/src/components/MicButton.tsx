@@ -12,10 +12,10 @@ export default function MicButton({ isListening, isSupported, onStart, onStop }:
   if (!isSupported) {
     return (
       <div className="mic-container">
-        <button className="mic-btn" style={{ opacity: 0.5, cursor: 'not-allowed' }} disabled id="mic-btn-unsupported">
-          <MicOff size={36} color="white" />
+        <button className="mic-btn" style={{ opacity: 0.45, cursor: 'not-allowed' }} disabled id="mic-btn-unsupported">
+          <MicOff size={34} color="white" strokeWidth={2} />
         </button>
-        <span className="mic-label" style={{ color: '#DC2626' }}>
+        <span className="mic-label" style={{ color: 'var(--danger)' }}>
           Speech not supported in this browser
         </span>
       </div>
@@ -30,10 +30,12 @@ export default function MicButton({ isListening, isSupported, onStart, onStop }:
         onClick={isListening ? onStop : onStart}
         aria-label={isListening ? 'Stop recording' : 'Start recording'}
       >
-        {isListening ? <Square size={32} color="white" fill="white" /> : <Mic size={36} color="white" />}
+        {isListening
+          ? <Square size={30} color="white" fill="white" strokeWidth={0} />
+          : <Mic size={34} color="white" strokeWidth={2} />}
       </button>
       <span className="mic-label">
-        {isListening ? '🔴 Listening… tap to stop' : 'Tap to speak your doubt'}
+        {isListening ? 'Listening… tap to stop' : 'Tap to speak your doubt'}
       </span>
     </div>
   );

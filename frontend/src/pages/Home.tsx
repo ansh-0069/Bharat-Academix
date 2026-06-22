@@ -1,7 +1,6 @@
 // Home.tsx — Main doubt-asking screen
-// Upgrades: #1 Streaming answers · #2 Re-explain toggle · #3 Grade selector
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Send, Loader2, WifiOff } from 'lucide-react';
+import { Send, Loader2, WifiOff, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import type { Mode } from '../context/AppContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
@@ -25,18 +24,13 @@ const GRADES = [6, 7, 8, 9, 10];
 export default function Home() {
   const { language, setLanguage, mode, setMode, lowBandwidth, sessionId, grade, setGrade } = useApp();
 
-  // ── Input state ────────────────────────────────────────────────────────────
   const [inputText, setInputText] = useState('');
-
-  // ── Answer state ───────────────────────────────────────────────────────────
   const [answer, setAnswer] = useState<AskResponse | null>(null);
-  const [streamingText, setStreamingText] = useState('');   // live text during stream
-  const [isStreaming, setIsStreaming] = useState(false);    // tokens actively arriving
-  const [isLoading, setIsLoading] = useState(false);       // whole request in flight
+  const [streamingText, setStreamingText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [isReExplaining, setIsReExplaining] = useState(false);
-  const [lastQuestion, setLastQuestion] = useState('');    // for re-explain
-
-  // ── Other UI state ─────────────────────────────────────────────────────────
+  const [lastQuestion, setLastQuestion] = useState('');
   const [error, setError] = useState('');
   const [showDiagram, setShowDiagram] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
@@ -44,27 +38,23 @@ export default function Home() {
   const [practiceTopicTag, setPracticeTopicTag] = useState('');
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
 
-  // Abort controller so we can cancel an in-flight stream
   const abortRef = useRef<AbortController | null>(null);
 
   const { transcript, isListening, isSupported, startListening, stopListening, resetTranscript } =
     useSpeechRecognition(language);
   const { speak, stop, isSpeaking } = useSpeechSynthesis(language);
 
-  // Populate input from STT transcript in real time
   useEffect(() => {
     if (transcript) setInputText(transcript);
   }, [transcript]);
 
-  // ── Core streaming submit ──────────────────────────────────────────────────
   const submitQuestion = useCallback(async (
     text: string,
-    overrideMode?: Mode,   // used by re-explain to bypass stale closure
+    overrideMode?: Mode,
     isReExplain = false,
   ) => {
     if (!text.trim() || isLoading) return;
 
-    // Cancel any in-flight stream
     if (abortRef.current) abortRef.current.abort();
     abortRef.current = new AbortController();
 
@@ -80,7 +70,6 @@ export default function Home() {
     stop();
 
     if (!isReExplain) {
-      // Only reset practice state on genuinely new questions
       setShowPractice(false);
       setPracticeQuestions([]);
     }
@@ -97,12 +86,10 @@ export default function Home() {
           low_bandwidth: lowBandwidth,
           grade,
         },
-        // onChunk — called for each text token
         (chunk) => {
           accumulatedText += chunk;
           setStreamingText(accumulatedText);
         },
-        // onDone — called with full parsed response
         (result) => {
           setAnswer(result);
           setStreamingText('');
@@ -113,9 +100,10 @@ export default function Home() {
         },
         abortRef.current.signal,
       );
-    } catch (e: any) {
-      if (e.name === 'AbortError') return; // cancelled intentionally
-      setError(e.message || 'Something went wrong. Is the backend running?');
+    } catch (e: unknown) {
+      const err = e as { name?: string; message?: string };
+      if (err.name === 'AbortError') return;
+      setError(err.message || 'Something went wrong. Is the backend running?');
       setStreamingText('');
       setIsStreaming(false);
     } finally {
@@ -124,15 +112,13 @@ export default function Home() {
     }
   }, [language, mode, sessionId, lowBandwidth, grade, speak, stop, isLoading]);
 
-  // ── Re-explain handler ─────────────────────────────────────────────────────
   const handleReExplain = useCallback((newMode: Mode) => {
     if (!lastQuestion || isLoading) return;
-    setMode(newMode);         // Update global toggle so it stays in sync
+    setMode(newMode);
     setIsReExplaining(true);
     submitQuestion(lastQuestion, newMode, true);
   }, [lastQuestion, isLoading, setMode, submitQuestion]);
 
-  // ── Mic handlers ───────────────────────────────────────────────────────────
   const handleMicStop = useCallback(() => {
     stopListening();
     if (transcript.trim()) {
@@ -145,7 +131,6 @@ export default function Home() {
     resetTranscript();
   };
 
-  // ── Practice set ───────────────────────────────────────────────────────────
   const handleGeneratePractice = async () => {
     if (!answer) return;
     setIsPracticeLoading(true);
@@ -159,28 +144,25 @@ export default function Home() {
       setPracticeQuestions(result.questions);
       setPracticeTopicTag(result.topic_tag);
       setShowPractice(true);
-    } catch (e: any) {
-      setError(e.message || 'Could not generate practice set');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setError(err.message || 'Could not generate practice set');
     } finally {
       setIsPracticeLoading(false);
     }
   };
 
-  // Whether the UI is busy (disable inputs)
   const isBusy = isLoading || isStreaming;
 
   return (
     <div className="page-content">
-
-      {/* ── Low bandwidth banner ─────────────────────────────────────────── */}
       {lowBandwidth && (
         <div className="lowbw-banner">
-          <WifiOff size={13} />
-          Low-Bandwidth Mode: shorter answers, manual audio play
+          <WifiOff size={14} />
+          Low-bandwidth mode — shorter answers, manual audio play
         </div>
       )}
 
-      {/* ── Language selector ────────────────────────────────────────────── */}
       <p className="section-title">Language / भाषा / மொழி / ভাষা</p>
       <div className="lang-selector" id="lang-selector">
         {LANGUAGES.map(lang => (
@@ -196,7 +178,6 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ── Grade selector (NEW) ─────────────────────────────────────────── */}
       <div className="grade-selector" id="grade-selector">
         <span className="grade-label">Class</span>
         {GRADES.map(g => (
@@ -211,25 +192,23 @@ export default function Home() {
         ))}
       </div>
 
-      {/* ── Mode toggle ──────────────────────────────────────────────────── */}
       <div className="mode-toggle" id="mode-toggle">
         <button
           id="mode-formal-btn"
           className={`mode-btn ${mode === 'formal' ? 'active' : ''}`}
           onClick={() => setMode('formal')}
         >
-          📖 Formal
+          Formal
         </button>
         <button
           id="mode-tuition-btn"
           className={`mode-btn ${mode === 'tuition-teacher' ? 'active' : ''}`}
           onClick={() => setMode('tuition-teacher')}
         >
-          🏏 Tuition Style
+          Tuition Style
         </button>
       </div>
 
-      {/* ── Mic button ───────────────────────────────────────────────────── */}
       <MicButton
         isListening={isListening}
         isSupported={isSupported}
@@ -237,7 +216,6 @@ export default function Home() {
         onStop={handleMicStop}
       />
 
-      {/* ── Text input row ───────────────────────────────────────────────── */}
       <div className="input-row">
         <input
           id="doubt-input"
@@ -258,6 +236,7 @@ export default function Home() {
           className="send-btn"
           onClick={handleSend}
           disabled={!inputText.trim() || isBusy}
+          aria-label="Send question"
         >
           {isBusy
             ? <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
@@ -265,17 +244,13 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ── Error ────────────────────────────────────────────────────────── */}
       {error && (
-        <div style={{
-          background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10,
-          padding: '12px 14px', fontSize: 13, color: '#B91C1C', marginBottom: 16,
-        }}>
-          ⚠️ {error}
+        <div className="alert alert-error" role="alert">
+          <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          {error}
         </div>
       )}
 
-      {/* ── Streaming card (NEW) — shows text arriving live ──────────────── */}
       {isStreaming && streamingText && (
         <div className="streaming-card" id="streaming-card">
           <div className="streaming-header">
@@ -284,7 +259,7 @@ export default function Home() {
               <div className="streaming-dot" />
               <div className="streaming-dot" />
             </div>
-            <span style={{ fontSize: 11, color: '#5A7A6A', fontWeight: 600 }}>
+            <span className="streaming-label">
               {isReExplaining
                 ? `Re-explaining in ${mode === 'formal' ? 'Formal' : 'Tuition'} style…`
                 : 'Vidya Sahayak is answering…'}
@@ -296,7 +271,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Initial loading dots (before first chunk arrives) */}
       {isLoading && !streamingText && (
         <div className="loading-dots">
           <div className="loading-dot" />
@@ -305,7 +279,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Answer card ──────────────────────────────────────────────────── */}
       {answer && !isStreaming && (
         <AnswerCard
           answer={answer}
@@ -322,7 +295,6 @@ export default function Home() {
         />
       )}
 
-      {/* ── Weak topic card ───────────────────────────────────────────────── */}
       {answer?.show_weak_topic_card && !isStreaming && (
         <WeakTopicCard
           topicTag={answer.weak_topic_tag || answer.topic_tag}
@@ -331,7 +303,6 @@ export default function Home() {
         />
       )}
 
-      {/* ── Diagram viewer ───────────────────────────────────────────────── */}
       {showDiagram && answer?.topic_tag && (
         <DiagramViewer
           topicTag={answer.topic_tag}
@@ -339,7 +310,6 @@ export default function Home() {
         />
       )}
 
-      {/* ── Practice set ─────────────────────────────────────────────────── */}
       {showPractice && practiceQuestions.length > 0 && (
         <PracticeSet
           questions={practiceQuestions}

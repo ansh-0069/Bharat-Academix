@@ -1,5 +1,5 @@
 // AnswerCard.tsx
-import { Volume2, VolumeX, BookOpen, Tag, RefreshCw } from 'lucide-react';
+import { Volume2, VolumeX, BookOpen, Tag, RefreshCw, AlertTriangle, LayoutGrid } from 'lucide-react';
 import ConfidenceBadge from './ConfidenceBadge';
 import type { AskResponse } from '../api/client';
 import type { Language, Mode } from '../context/AppContext';
@@ -8,6 +8,7 @@ const LANG_CLASS: Record<Language, string> = {
   hi: 'lang-hi',
   ta: 'lang-ta',
   bn: 'lang-bn',
+  en: '',
 };
 
 interface Props {
@@ -39,18 +40,18 @@ export default function AnswerCard({
 }: Props) {
   const langClass = LANG_CLASS[language];
   const otherMode: Mode = currentMode === 'formal' ? 'tuition-teacher' : 'formal';
-  const otherModeLabel = currentMode === 'formal' ? '🏏 Tuition Style' : '📖 Formal';
+  const otherModeLabel = currentMode === 'formal' ? 'Tuition Style' : 'Formal';
 
   return (
     <div className="answer-card" id="answer-card">
       <div className="answer-header">
         <span className="answer-label">
-          <BookOpen size={11} style={{ display: 'inline', marginRight: 4 }} />
+          <BookOpen size={12} />
           Answer
         </span>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="answer-meta">
           <span className="grade-badge">Class {grade}</span>
-          <span style={{ fontSize: 10, color: '#5A7A6A', display: 'flex', alignItems: 'center', gap: 3 }}>
+          <span className="topic-tag">
             <Tag size={10} />
             {answer.topic_tag}
           </span>
@@ -62,24 +63,15 @@ export default function AnswerCard({
       </div>
 
       {answer.confidence === 'low' && (
-        <div style={{
-          padding: '10px 16px',
-          background: '#FEF2F2',
-          fontSize: 12,
-          color: '#B91C1C',
-          fontWeight: 500,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          ⚠️ Please verify this with your teacher
+        <div className="answer-warning">
+          <AlertTriangle size={14} />
+          Please verify this with your teacher
         </div>
       )}
 
-      <div className="answer-footer" style={{ flexWrap: 'wrap', gap: 8 }}>
+      <div className="answer-footer">
         <ConfidenceBadge confidence={answer.confidence as 'high' | 'medium' | 'low'} />
 
-        {/* Audio control */}
         {!lowBandwidth ? (
           <button
             id="audio-play-btn"
@@ -100,25 +92,27 @@ export default function AnswerCard({
           </button>
         )}
 
-        {/* Diagram button */}
         {answer.diagram_eligible && (
           <button
             id="view-diagram-btn"
             className="action-btn action-btn-green"
             onClick={onViewDiagram}
           >
-            📐 View Diagram
+            <LayoutGrid size={13} />
+            View Diagram
           </button>
         )}
 
-        {/* ── Re-explain button ── */}
         <button
           id="reexplain-btn"
           className={`reexplain-btn ${isReExplaining ? 'loading' : ''}`}
           onClick={() => !isReExplaining && onReExplain(otherMode)}
           title={`Re-explain in ${otherMode} style`}
         >
-          <RefreshCw size={11} style={isReExplaining ? { animation: 'spin 1s linear infinite' } : {}} />
+          <RefreshCw
+            size={11}
+            style={isReExplaining ? { animation: 'spin 1s linear infinite' } : undefined}
+          />
           {otherModeLabel}
         </button>
       </div>

@@ -8,6 +8,7 @@ const LANG_CLASS: Record<Language, string> = {
   hi: 'lang-hi',
   ta: 'lang-ta',
   bn: 'lang-bn',
+  en: '',
 };
 
 interface Props {
@@ -22,7 +23,7 @@ export default function PracticeSet({ questions, topicTag, language, onClose }: 
   const langClass = LANG_CLASS[language];
 
   const handleAnswer = (qIdx: number, optIdx: number) => {
-    if (answers[qIdx] !== undefined) return; // already answered
+    if (answers[qIdx] !== undefined) return;
     setAnswers(prev => ({ ...prev, [qIdx]: optIdx }));
   };
 
@@ -30,24 +31,20 @@ export default function PracticeSet({ questions, topicTag, language, onClose }: 
   const score = questions.reduce((acc, q, i) => acc + (answers[i] === q.correct_index ? 1 : 0), 0);
 
   return (
-    <div className="practice-overlay" onClick={onClose}>
+    <div className="practice-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="practice-sheet" onClick={e => e.stopPropagation()} id="practice-sheet">
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="practice-header">
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#1A2E25' }}>
-              Practice Set — {topicTag}
-            </div>
-            <div style={{ fontSize: 12, color: '#5A7A6A', marginTop: 2 }}>
+            <div className="practice-header-title">Practice Set — {topicTag}</div>
+            <div className="practice-header-sub">
               {Object.keys(answers).length}/{questions.length} answered
             </div>
           </div>
-          <button className="close-btn" id="practice-close-btn" onClick={onClose}>
-            <X size={18} color="#374151" />
+          <button className="close-btn" id="practice-close-btn" onClick={onClose} aria-label="Close">
+            <X size={18} />
           </button>
         </div>
 
-        {/* Questions */}
         {questions.map((q, qIdx) => {
           const chosen = answers[qIdx];
           const answered = chosen !== undefined;
@@ -71,9 +68,9 @@ export default function PracticeSet({ questions, topicTag, language, onClose }: 
                     onClick={() => handleAnswer(qIdx, optIdx)}
                     disabled={answered}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      {answered && optIdx === q.correct_index && <CheckCircle size={13} color="#15803D" />}
-                      {answered && optIdx === chosen && optIdx !== q.correct_index && <XCircle size={13} color="#B91C1C" />}
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {answered && optIdx === q.correct_index && <CheckCircle size={14} color="#059669" />}
+                      {answered && optIdx === chosen && optIdx !== q.correct_index && <XCircle size={14} color="#DC2626" />}
                       <span className={langClass}>{['A', 'B', 'C', 'D'][optIdx]}. {opt}</span>
                     </span>
                   </button>
@@ -83,19 +80,16 @@ export default function PracticeSet({ questions, topicTag, language, onClose }: 
           );
         })}
 
-        {/* Score display */}
         {allAnswered && (
           <div className="practice-score" id="practice-score">
-            <Trophy size={28} color="#F5A623" style={{ margin: '0 auto 8px' }} />
-            <div style={{ fontSize: 20, fontWeight: 800 }}>
-              {score}/{questions.length}
-            </div>
-            <div style={{ fontSize: 14, marginTop: 4, opacity: 0.9 }}>
+            <Trophy size={32} style={{ margin: '0 auto 10px', opacity: 0.95 }} />
+            <div className="practice-score-value">{score}/{questions.length}</div>
+            <div className="practice-score-msg">
               {score === questions.length
-                ? '🎉 Perfect! Excellent work!'
+                ? 'Perfect score — excellent work!'
                 : score >= Math.ceil(questions.length * 0.6)
-                  ? '👍 Good job! Keep practicing!'
-                  : '💪 Keep going — practice makes perfect!'}
+                  ? 'Good job — keep practicing!'
+                  : 'Keep going — practice makes perfect!'}
             </div>
           </div>
         )}

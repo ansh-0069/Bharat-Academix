@@ -30,30 +30,28 @@ export default function DiagramViewer({ topicTag, onClose }: Props) {
   const Diagram = entry.component;
 
   return (
-    <div className="diagram-overlay" onClick={onClose}>
+    <div className="diagram-overlay" onClick={onClose} role="dialog" aria-modal="true">
       <div className="diagram-sheet" onClick={e => e.stopPropagation()}>
         <div className="diagram-sheet-header">
           <span className="diagram-title">{entry.title}</span>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="close-btn" onClick={() => setScale(s => Math.min(s + 0.2, 2))}>
-              <ZoomIn size={16} color="#374151" />
+          <div className="sheet-actions">
+            <button className="close-btn" onClick={() => setScale(s => Math.min(s + 0.2, 2))} aria-label="Zoom in">
+              <ZoomIn size={16} />
             </button>
-            <button className="close-btn" onClick={() => setScale(s => Math.max(s - 0.2, 0.6))}>
-              <ZoomOut size={16} color="#374151" />
+            <button className="close-btn" onClick={() => setScale(s => Math.max(s - 0.2, 0.6))} aria-label="Zoom out">
+              <ZoomOut size={16} />
             </button>
-            <button className="close-btn" id="diagram-close-btn" onClick={onClose}>
-              <X size={18} color="#374151" />
+            <button className="close-btn" id="diagram-close-btn" onClick={onClose} aria-label="Close">
+              <X size={18} />
             </button>
           </div>
         </div>
         <div className="diagram-svg-container" style={{ overflowX: 'auto' }}>
-          <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', transition: 'transform 0.2s' }}>
+          <div style={{ transform: `scale(${scale})`, transformOrigin: 'top left', transition: 'transform 0.25s var(--ease-out)' }}>
             <Diagram />
           </div>
         </div>
-        <p style={{ fontSize: 11, color: '#5A7A6A', marginTop: 8, textAlign: 'center' }}>
-          Tap outside or ✕ to close · Use +/− to zoom
-        </p>
+        <p className="sheet-hint">Tap outside or close to dismiss · Use +/− to zoom</p>
       </div>
     </div>
   );

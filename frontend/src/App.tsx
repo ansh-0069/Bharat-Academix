@@ -1,6 +1,6 @@
-// App.tsx — Shell with header + bottom nav + routing
+// App.tsx — Premium shell with glass header + floating nav
 import { NavLink, Routes, Route, Navigate } from 'react-router-dom';
-import { Home as HomeIcon, BarChart2, Settings as SettingsIcon } from 'lucide-react';
+import { Home as HomeIcon, BarChart2, Settings as SettingsIcon, Sparkles } from 'lucide-react';
 import Home from './pages/Home';
 import Progress from './pages/Progress';
 import Settings from './pages/Settings';
@@ -14,35 +14,20 @@ const NAV_ITEMS = [
 export default function App() {
   return (
     <div className="app-shell">
-      {/* Header */}
       <header className="header">
         <div className="header-logo">
-          {/* Small lotus icon */}
-          <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-            <circle cx="16" cy="16" r="16" fill="rgba(255,255,255,0.15)" />
-            <text x="16" y="22" textAnchor="middle" fontSize="18">🪷</text>
-          </svg>
+          <div className="header-logo-mark" aria-hidden="true">🪷</div>
           <div className="header-logo-text">
             <span className="header-logo-devanagari">विद्या सहायक</span>
             <span className="header-logo-english">Vidya Sahayak</span>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <div style={{
-            background: 'rgba(255,255,255,0.15)',
-            borderRadius: 6,
-            padding: '3px 8px',
-            fontSize: 10,
-            color: 'rgba(255,255,255,0.9)',
-            fontWeight: 600,
-            border: '1px solid rgba(255,255,255,0.2)'
-          }}>
-            🏆 CodeQuest 2026
-          </div>
+        <div className="header-badge">
+          <Sparkles size={11} />
+          CodeQuest 2026
         </div>
       </header>
 
-      {/* Page content */}
       <main style={{ flex: 1 }}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -52,8 +37,7 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="bottom-nav">
+      <nav className="bottom-nav" aria-label="Main navigation">
         {NAV_ITEMS.map(({ path, label, icon: Icon, id }) => (
           <NavLink
             key={path}
@@ -62,7 +46,7 @@ export default function App() {
             id={id}
             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
           >
-            <Icon size={22} />
+            <Icon size={20} strokeWidth={2} />
             <span>{label}</span>
           </NavLink>
         ))}
