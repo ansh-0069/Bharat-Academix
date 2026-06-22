@@ -14,7 +14,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from database import init_db, log_doubt, get_topic_count_in_session, get_session_progress
-from gemini_client import ask_gemini, ask_gemini_stream, ask_gemini_practice
+from mock_data import get_mock_answer, get_mock_practice_questions, get_questions_list
+# from openai_client import ask_openai, ask_openai_stream, ask_openai_practice
 from prompts import (
     build_ask_system_prompt,
     build_practice_system_prompt,
@@ -182,24 +183,15 @@ def _build_ask_response(
 
 @app.post("/ask", response_model=AskResponse)
 async def ask(req: AskRequest):
-    """Non-streaming endpoint (kept for fallback/compatibility)."""
+    """Non-streaming endpoint using mock data for prototype."""
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Question text is required")
 
-    system_prompt = build_ask_system_prompt(req.language, req.mode, req.low_bandwidth, req.grade)
-
-    # Hinglish / Romanized input detection
-    if _is_romanized(req.text, req.language):
-        lang_name = LANGUAGE_NAMES_FULL.get(req.language, req.language)
-        system_prompt = (
-            f"NOTE: The student typed their question in Romanized {lang_name} (English letters). "
-            f"Understand it as {lang_name} and answer entirely in {lang_name} script.\n\n"
-        ) + system_prompt
-
     try:
-        result = await ask_gemini(req.text, system_prompt)
+        # Use mock data instead of API
+        result = get_mock_answer(req.text, req.language, req.grade)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Mock data error: {str(e)}")
 
     data = _build_ask_response(result, req.session_id, req.text, req.language)
     return AskResponse(**data)
@@ -208,92 +200,30 @@ async def ask(req: AskRequest):
 @app.post("/ask/stream")
 async def ask_stream(req: AskRequest):
     """
-    Streaming endpoint using Server-Sent Events (SSE).
-
-    Streams the answer text token-by-token as:
-        data: {"type": "chunk", "text": "..."}\n\n
-
-    After streaming completes, sends a final event with full metadata:
-        data: {"type": "done", "answer": "...", "confidence": "...", ...}\n\n
+    Streaming endpoint using mock data - simulates streaming for prototype.
     """
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="Question text is required")
 
-    system_prompt = build_ask_system_prompt(req.language, req.mode, req.low_bandwidth, req.grade)
-
-    # Hinglish / Romanized input detection
-    if _is_romanized(req.text, req.language):
-        lang_name = LANGUAGE_NAMES_FULL.get(req.language, req.language)
-        system_prompt = (
-            f"NOTE: The student typed their question in Romanized {lang_name} (English letters). "
-            f"Understand it as {lang_name} and answer entirely in {lang_name} script.\n\n"
-        ) + system_prompt
-
-    DELIM = STREAM_DELIMITER
-    DELIM_LEN = len(DELIM)
-
-
     async def event_stream():
-        full_text = ""          # Complete accumulated output
-        sent_chars = 0          # Characters already sent to client
-        seen_delimiter = False
-
         try:
-            async for chunk_text in ask_gemini_stream(req.text, system_prompt):
-                full_text += chunk_text
-
-                if not seen_delimiter:
-                    if DELIM in full_text:
-                        # Delimiter appeared — send remaining visible answer, then stop streaming
-                        seen_delimiter = True
-                        visible = full_text.split(DELIM, 1)[0]
-                        unsent = visible[sent_chars:]
-                        if unsent:
-                            yield f"data: {json.dumps({'type': 'chunk', 'text': unsent})}\n\n"
-                        sent_chars = len(visible)
-                    else:
-                        # Buffer last DELIM_LEN chars in case delimiter is split across chunks
-                        safe_end = max(sent_chars, len(full_text) - DELIM_LEN)
-                        unsent = full_text[sent_chars:safe_end]
-                        if unsent:
-                            yield f"data: {json.dumps({'type': 'chunk', 'text': unsent})}\n\n"
-                            sent_chars = safe_end
-
+            # Get mock answer
+            result = get_mock_answer(req.text, req.language, req.grade)
+            answer_text = result.get("answer", "")
+            
+            # Simulate streaming by sending character by character
+            chunk_size = 5  # Send 5 characters at a time
+            for i in range(0, len(answer_text), chunk_size):
+                chunk = answer_text[i:i+chunk_size]
+                yield f"data: {json.dumps({'type': 'chunk', 'text': chunk})}\n\n"
+                await asyncio.sleep(0.05)  # Small delay to simulate streaming
+            
+            # Send final metadata
+            data = _build_ask_response(result, req.session_id, req.text, req.language)
+            yield f"data: {json.dumps({'type': 'done', **data})}\n\n"
+            
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-            return
-
-        # ── Parse metadata from the complete buffered text ────────────────────
-        if DELIM in full_text:
-            parts = full_text.split(DELIM, 1)
-            answer_text = parts[0].strip()
-            meta_str = parts[1].strip()
-        else:
-            # Delimiter never appeared — treat entire output as answer
-            answer_text = full_text.strip()
-            meta_str = ""
-
-        meta: dict = {}
-        if meta_str:
-            import re
-            # Strip any markdown fences
-            meta_str = re.sub(r"^```(?:json)?\s*", "", meta_str)
-            meta_str = re.sub(r"\s*```$", "", meta_str)
-            try:
-                meta = json.loads(meta_str.strip())
-            except (json.JSONDecodeError, ValueError):
-                meta = {}
-
-        result = {
-            "answer": answer_text,
-            "confidence": meta.get("confidence", "low"),
-            "topic_tag": meta.get("topic_tag", "general"),
-            "diagram_eligible": bool(meta.get("diagram_eligible", False)),
-            "diagram_data": meta.get("diagram_data"),
-        }
-
-        data = _build_ask_response(result, req.session_id, req.text, req.language)
-        yield f"data: {json.dumps({'type': 'done', **data})}\n\n"
 
     return StreamingResponse(
         event_stream(),
@@ -308,15 +238,12 @@ async def ask_stream(req: AskRequest):
 
 @app.post("/practice", response_model=PracticeResponse)
 async def practice(req: PracticeRequest):
-    system_prompt = build_practice_system_prompt(req.topic_tag, req.language, req.grade)
-    user_prompt = f"Generate 5 multiple-choice practice questions about: {req.topic_tag}"
-
+    """Generate practice questions using mock data."""
     try:
-        result = await ask_gemini_practice(user_prompt, system_prompt)
+        raw_questions = get_mock_practice_questions(req.topic_tag, req.language, req.grade)
     except Exception as e:
-        raise HTTPException(status_code=502, detail=f"Gemini API error: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Mock data error: {str(e)}")
 
-    raw_questions = result.get("questions", [])
     questions = []
     for q in raw_questions:
         if not isinstance(q, dict):
@@ -342,3 +269,13 @@ async def progress(session_id: str):
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": "Vidya Sahayak API", "version": "2.0.0"}
+
+
+@app.get("/questions")
+async def get_questions(language: str = "hi", grade: int = 8):
+    """Get list of available mock questions for the given language and grade."""
+    try:
+        questions = get_questions_list(language, grade)
+        return {"questions": questions, "language": language, "grade": grade}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching questions: {str(e)}")

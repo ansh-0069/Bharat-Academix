@@ -597,6 +597,56 @@ body::before {
   background: var(--bg-subtle);
 }
 
+/* ─── Question Dropdown ─────────────────────────────────────────────────────── */
+.question-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  z-index: 100;
+  overflow: hidden;
+  animation: slide-up 0.18s var(--ease-out);
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.dropdown-header {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  background: var(--bg-subtle);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.dropdown-item {
+  padding: 12px 14px;
+  font-size: 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition), color var(--transition);
+  line-height: 1.4;
+  letter-spacing: -0.01em;
+}
+
+.dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.dropdown-item:hover {
+  background: var(--accent-subtle);
+  color: var(--accent);
+}
+
 .send-btn {
   width: 50px;
   height: 50px;

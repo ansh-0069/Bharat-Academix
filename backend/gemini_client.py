@@ -117,7 +117,7 @@ async def ask_gemini_stream(
     last_exc = None
     while attempt < DEFAULT_RETRIES:
         try:
-            async for chunk in client.aio.models.generate_content_stream(
+            stream = await client.aio.models.generate_content_stream(
                 model=MODEL_NAME,
                 contents=user_message,
                 config=types.GenerateContentConfig(
@@ -125,7 +125,8 @@ async def ask_gemini_stream(
                     temperature=0.4,
                     max_output_tokens=1024,
                 ),
-            ):
+            )
+            async for chunk in stream:
                 if chunk.text:
                     yield chunk.text
             return

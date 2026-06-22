@@ -17,6 +17,7 @@ const LANGUAGES = [
   { code: 'hi' as const, script: 'हिं', label: 'Hindi' },
   { code: 'ta' as const, script: 'த', label: 'Tamil' },
   { code: 'bn' as const, script: 'বাং', label: 'Bengali' },
+  { code: 'en' as const, script: 'En', label: 'English' },
 ];
 
 const GRADES = [6, 7, 8, 9, 10];
@@ -37,6 +38,8 @@ export default function Home() {
   const [practiceQuestions, setPracticeQuestions] = useState<Question[]>([]);
   const [practiceTopicTag, setPracticeTopicTag] = useState('');
   const [isPracticeLoading, setIsPracticeLoading] = useState(false);
+  const [availableQuestions, setAvailableQuestions] = useState<string[]>([]);
+  const [showQuestionDropdown, setShowQuestionDropdown] = useState(false);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -47,6 +50,19 @@ export default function Home() {
   useEffect(() => {
     if (transcript) setInputText(transcript);
   }, [transcript]);
+
+  // Fetch available questions when language or grade changes
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      try {
+        const result = await api.getQuestions(language, grade);
+        setAvailableQuestions(result.questions);
+      } catch (e) {
+        console.error('Failed to fetch questions:', e);
+      }
+    };
+    fetchQuestions();
+  }, [language, grade]);
 
   const submitQuestion = useCallback(async (
     text: string,
@@ -217,20 +233,48 @@ export default function Home() {
       />
 
       <div className="input-row">
-        <input
-          id="doubt-input"
-          className="text-input"
-          type="text"
-          placeholder={
-            language === 'hi' ? 'यहाँ अपना सवाल टाइप करें…' :
-            language === 'ta' ? 'உங்கள் கேள்வியை இங்கே தட்டச்சு செய்யுங்கள்…' :
-            'এখানে আপনার প্রশ্ন টাইপ করুন…'
-          }
-          value={inputText}
-          onChange={e => setInputText(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && !isBusy && handleSend()}
-          disabled={isBusy}
-        />
+        <div style={{ position: 'relative', flex: 1 }}>
+          <input
+            id="doubt-input"
+            className="text-input"
+            type="text"
+            placeholder={
+              language === 'hi' ? 'यहाँ अपना सवाल टाइप करें…' :
+              language === 'ta' ? 'உங்கள் கேள்வியை இங்கே தட்டச்சு செய்யுங்கள்…' :
+              language === 'bn' ? 'এখানে আপনার প্রশ্ন টাইপ করুন…' :
+              'Type your question here…'
+            }
+            value={inputText}
+            onChange={e => setInputText(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && !isBusy && handleSend()}
+            onFocus={() => setShowQuestionDropdown(true)}
+            onBlur={() => setTimeout(() => setShowQuestionDropdown(false), 200)}
+            disabled={isBusy}
+          />
+          {showQuestionDropdown && availableQuestions.length > 0 && (
+            <div className="question-dropdown">
+              <div className="dropdown-header">
+                📚 {language === 'hi' ? 'उपलब्ध प्रश्न चुनें' : 
+                     language === 'ta' ? 'கேள்விகளை தேர்ந்தெடுக்கவும்' : 
+                     language === 'bn' ? 'প্রশ্ন নির্বাচন করুন' :
+                     'Select a Question'}
+              </div>
+              {availableQuestions.map((q, idx) => (
+                <div
+                  key={idx}
+                  className="dropdown-item"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    setInputText(q);
+                    setShowQuestionDropdown(false);
+                  }}
+                >
+                  {q}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           id="send-btn"
           className="send-btn"
