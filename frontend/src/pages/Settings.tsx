@@ -1,5 +1,5 @@
-// Settings.tsx
-import { Settings as SettingsIcon, Wifi, WifiOff, Globe, Info } from 'lucide-react';
+// Settings.tsx — Enhanced with dark mode, theme picker, and stats
+import { Settings as SettingsIcon, Wifi, WifiOff, Globe, Info, Moon, Sun, Trash2, BookOpen, Target, Zap } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const LANGUAGES = [
@@ -12,7 +12,10 @@ const LANGUAGES = [
 const COMING_SOON = ['Gujarati', 'Marathi', 'Telugu', 'Kannada', 'Punjabi', 'Odia'];
 
 export default function Settings() {
-  const { lowBandwidth, setLowBandwidth, sessionId, language, setLanguage } = useApp();
+  const { lowBandwidth, setLowBandwidth, sessionId, language, setLanguage, theme, setTheme, history, clearHistory, streak } = useApp();
+
+  const totalQuestions = history.length;
+  const topicsUnique = new Set(history.map(h => h.topicTag)).size;
 
   return (
     <div className="page-content">
@@ -26,7 +29,64 @@ export default function Settings() {
         <p className="page-subtitle">Customize your Vidya Sahayak experience</p>
       </header>
 
-      <p className="section-title">Connectivity</p>
+      {/* Personal stats */}
+      <div className="settings-stats-banner">
+        <div className="settings-stat-item">
+          <BookOpen size={16} style={{ color: 'var(--accent)' }} />
+          <div>
+            <div className="settings-stat-val">{totalQuestions}</div>
+            <div className="settings-stat-label">Questions asked</div>
+          </div>
+        </div>
+        <div className="settings-stat-divider" />
+        <div className="settings-stat-item">
+          <Target size={16} style={{ color: '#059669' }} />
+          <div>
+            <div className="settings-stat-val">{topicsUnique}</div>
+            <div className="settings-stat-label">Topics covered</div>
+          </div>
+        </div>
+        <div className="settings-stat-divider" />
+        <div className="settings-stat-item">
+          <Zap size={16} style={{ color: '#D97706' }} />
+          <div>
+            <div className="settings-stat-val">{streak} 🔥</div>
+            <div className="settings-stat-label">Day streak</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Appearance */}
+      <p className="section-title" style={{ marginTop: 24 }}>Appearance</p>
+      <div className="settings-row" id="theme-settings-row">
+        <div>
+          <div className="settings-label">
+            {theme === 'dark' ? <Moon size={16} color="#7C3AED" /> : <Sun size={16} color="#D97706" />}
+            Theme
+          </div>
+          <div className="settings-desc">
+            {theme === 'dark' ? 'Dark mode — easy on your eyes at night' : 'Light mode — bright and crisp'}
+          </div>
+        </div>
+        <div className="theme-toggle-row">
+          <button
+            className={`theme-btn ${theme === 'light' ? 'active' : ''}`}
+            onClick={() => setTheme('light')}
+          >
+            <Sun size={14} />
+            Light
+          </button>
+          <button
+            className={`theme-btn ${theme === 'dark' ? 'active' : ''}`}
+            onClick={() => setTheme('dark')}
+          >
+            <Moon size={14} />
+            Dark
+          </button>
+        </div>
+      </div>
+
+      <p className="section-title" style={{ marginTop: 20 }}>Connectivity</p>
       <div className="settings-row" id="lowbw-settings-row">
         <div>
           <div className="settings-label">
@@ -60,11 +120,11 @@ export default function Settings() {
             </div>
           </div>
           <button
-            className={`action-btn action-btn-green ${language === lang.code ? '' : ''}`}
+            className={`action-btn action-btn-green`}
             style={{ opacity: language === lang.code ? 1 : 0.85 }}
             onClick={() => setLanguage(lang.code)}
           >
-            {language === lang.code ? 'Selected' : 'Use'}
+            {language === lang.code ? 'Selected ✓' : 'Use'}
           </button>
         </div>
       ))}
@@ -79,6 +139,26 @@ export default function Settings() {
         <Globe size={16} style={{ flexShrink: 0, marginTop: 1 }} />
         <span>Architecture is language-pack based — adding a new language is a config change, not a rebuild.</span>
       </div>
+
+      <p className="section-title" style={{ marginTop: 24 }}>Data</p>
+      {history.length > 0 && (
+        <div className="settings-row" id="clear-history-row">
+          <div>
+            <div className="settings-label">
+              <Trash2 size={16} color="#DC2626" />
+              Clear History
+            </div>
+            <div className="settings-desc">{history.length} saved questions on this device</div>
+          </div>
+          <button
+            className="action-btn"
+            style={{ borderColor: 'rgba(220,38,38,0.25)', color: '#DC2626' }}
+            onClick={clearHistory}
+          >
+            Clear
+          </button>
+        </div>
+      )}
 
       <p className="section-title" style={{ marginTop: 24 }}>About</p>
       <div className="settings-row">
@@ -98,7 +178,7 @@ export default function Settings() {
       </div>
 
       <p className="footer-note">
-        Powered by Google Gemini 1.5 Flash · Browser Web Speech API
+        Powered by Google Gemini 2.5 Flash · Browser Web Speech API
       </p>
     </div>
   );

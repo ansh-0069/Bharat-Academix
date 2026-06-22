@@ -146,5 +146,4 @@ export const api = {
   ask: (req: AskRequest) => post<AskResponse>('/ask', req),
   practice: (req: PracticeRequest) => post<PracticeResponse>('/practice', req),
   progress: (sessionId: string) => get<ProgressResponse>(`/progress/${sessionId}`),
-  getQuestions: (language: string, grade: number) => get<{ questions: string[]; language: string; grade: number }>(`/questions?language=${language}&grade=${grade}`),
 };
