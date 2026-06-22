@@ -1,5 +1,11 @@
 // PythagorasDiagram.tsx
-export default function PythagorasDiagram() {
+interface Props {
+  sideA?: number;
+  sideB?: number;
+  hypotenuse?: number;
+}
+
+export default function PythagorasDiagram({ sideA = 3, sideB = 4, hypotenuse = 5 }: Props) {
   // Right triangle: A(60,220), B(280,220), C(280,60)
   const A = { x: 60, y: 220 };
   const B = { x: 280, y: 220 };
@@ -32,9 +38,9 @@ export default function PythagorasDiagram() {
       <rect x={B.x - 16} y={B.y - 16} width="14" height="14" fill="none" stroke="#1F6F50" strokeWidth="2" />
 
       {/* Side labels */}
-      <text x={(A.x + B.x) / 2} y={A.y + 16} textAnchor="middle" fontSize="13" fontWeight="700" fill="#15803D">a</text>
-      <text x={B.x + 16} y={(B.y + C.y) / 2} textAnchor="middle" fontSize="13" fontWeight="700" fill="#1D4ED8">b</text>
-      <text x={(A.x + C.x) / 2 - 16} y={(A.y + C.y) / 2} textAnchor="middle" fontSize="13" fontWeight="700" fill="#B45309">c</text>
+      <text x={(A.x + B.x) / 2} y={A.y + 16} textAnchor="middle" fontSize="13" fontWeight="700" fill="#15803D">a = {sideA}</text>
+      <text x={B.x + 16} y={(B.y + C.y) / 2} textAnchor="middle" fontSize="13" fontWeight="700" fill="#1D4ED8">b = {sideB}</text>
+      <text x={(A.x + C.x) / 2 - 16} y={(A.y + C.y) / 2} textAnchor="middle" fontSize="13" fontWeight="700" fill="#B45309">c = {hypotenuse}</text>
 
       {/* Vertex labels */}
       <text x={A.x - 14} y={A.y + 4} fontSize="13" fontWeight="700" fill="#374151">A</text>
@@ -44,7 +50,7 @@ export default function PythagorasDiagram() {
       {/* Theorem box */}
       <rect x="50" y="6" width="200" height="38" rx="8" fill="#1F6F50" />
       <text x="150" y="22" textAnchor="middle" fontSize="13" fontWeight="700" fill="white">Pythagoras Theorem</text>
-      <text x="150" y="38" textAnchor="middle" fontSize="14" fontWeight="800" fill="#F5A623">a² + b² = c²</text>
+      <text x="150" y="38" textAnchor="middle" fontSize="14" fontWeight="800" fill="#F5A623">{sideA}² + {sideB}² = {hypotenuse}²</text>
     </svg>
   );
 }

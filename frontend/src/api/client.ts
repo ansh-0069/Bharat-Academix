@@ -14,6 +14,13 @@ export interface AskResponse {
   confidence: 'high' | 'medium' | 'low';
   topic_tag: string;
   diagram_eligible: boolean;
+  diagram_data?: {
+    numerator?: number;
+    denominator?: number;
+    side_a?: number;
+    side_b?: number;
+    hypotenuse?: number;
+  } | null;
   show_weak_topic_card: boolean;
   weak_topic_tag: string | null;
 }

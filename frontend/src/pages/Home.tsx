@@ -306,6 +306,7 @@ export default function Home() {
       {showDiagram && answer?.topic_tag && (
         <DiagramViewer
           topicTag={answer.topic_tag}
+          diagramData={answer?.diagram_data}
           onClose={() => setShowDiagram(false)}
         />
       )}

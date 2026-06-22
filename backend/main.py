@@ -21,6 +21,7 @@ from prompts import (
     get_related_tags,
     DIAGRAM_TOPICS,
     STREAM_DELIMITER,
+    verify_confidence,
 )
 
 
@@ -116,6 +117,7 @@ class AskResponse(BaseModel):
     confidence: str                # high | medium | low
     topic_tag: str
     diagram_eligible: bool
+    diagram_data: dict | None = None
     show_weak_topic_card: bool
     weak_topic_tag: str | None = None
 
@@ -150,7 +152,10 @@ def _build_ask_response(
     answer = result.get("answer", "Sorry, I could not generate an answer.")
     confidence = result.get("confidence", "low")
     topic_tag = result.get("topic_tag", "general")
+    diagram_data = result.get("diagram_data")
     diagram_eligible = bool(result.get("diagram_eligible", False))
+
+    confidence = verify_confidence(topic_tag, language, answer, confidence)
 
     # Only flag diagram_eligible for supported templates
     if topic_tag not in DIAGRAM_TOPICS:
@@ -167,6 +172,7 @@ def _build_ask_response(
         "confidence": confidence,
         "topic_tag": topic_tag,
         "diagram_eligible": diagram_eligible,
+        "diagram_data": diagram_data,
         "show_weak_topic_card": show_weak_topic_card,
         "weak_topic_tag": topic_tag if show_weak_topic_card else None,
     }
@@ -283,6 +289,7 @@ async def ask_stream(req: AskRequest):
             "confidence": meta.get("confidence", "low"),
             "topic_tag": meta.get("topic_tag", "general"),
             "diagram_eligible": bool(meta.get("diagram_eligible", False)),
+            "diagram_data": meta.get("diagram_data"),
         }
 
         data = _build_ask_response(result, req.session_id, req.text, req.language)

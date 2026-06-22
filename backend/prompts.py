@@ -40,6 +40,64 @@ SYNONYM_GROUPS: list[list[str]] = [
 STREAM_DELIMITER = "|||METADATA|||"
 
 
+# ── Confidence cross-check: known fact-keys per topic + language ──────────────
+# Used to downgrade self-reported "high" confidence when key terms are absent.
+# Only ever downgrades, never upgrades. Topics not listed here are trusted as-is.
+VERIFIED_FACT_KEYS: dict[str, dict[str, list[str]]] = {
+    "photosynthesis": {
+        "hi": ["सूर्य", "क्लोरोफिल", "प्रकाश", "पत्ती", "ऑक्सीजन"],
+        "ta": ["சூரிய", "குளோரோபில்", "ஒளி", "இலை", "ஆக்சிஜன்"],
+        "bn": ["সূর্য", "ক্লোরোফিল", "আলো", "পাতা", "অক্সিজেন"],
+        "en": ["sunlight", "chlorophyll", "light", "oxygen", "glucose"],
+    },
+    "water-cycle": {
+        "hi": ["वाष्पीकरण", "संघनन", "वर्षा", "बादल", "जल"],
+        "ta": ["ஆவியாதல்", "ஒடுக்கம்", "மழை", "மேகம்", "நீர்"],
+        "bn": ["বাষ্পীভবন", "ঘনীভবন", "বৃষ্টি", "মেঘ", "জল"],
+        "en": ["evaporation", "condensation", "precipitation", "cloud", "water"],
+    },
+    "pythagoras": {
+        "hi": ["कर्ण", "समकोण", "वर्ग", "त्रिभुज", "पाइथागोरस"],
+        "ta": ["கர்ணம்", "செங்கோணம்", "வர்க்கம்", "முக்கோணம்", "பித்தகோரஸ்"],
+        "bn": ["কর্ণ", "সমকোণ", "বর্গ", "ত্রিভুজ", "পিথাগোরাস"],
+        "en": ["hypotenuse", "right angle", "square", "triangle", "pythagoras"],
+    },
+    "fractions": {
+        "hi": ["अंश", "हर", "भाग", "भिन्न", "बराबर"],
+        "ta": ["தொகுதி", "பகுதி", "பகுதிகள்", "பின்னம்", "சம"],
+        "bn": ["লব", "হর", "ভাগ", "ভগ্নাংশ", "সমান"],
+        "en": ["numerator", "denominator", "fraction", "equal", "parts"],
+    },
+    "simple-circuit": {
+        "hi": ["धारा", "बैटरी", "प्रतिरोध", "बल्ब", "विद्युत"],
+        "ta": ["மின்னோட்டம்", "மின்கலம்", "மின்தடை", "பல்பு", "மின்சாரம்"],
+        "bn": ["তড়িৎ", "ব্যাটারি", "প্রতিরোধ", "বাল্ব", "বর্তনী"],
+        "en": ["current", "battery", "resistance", "bulb", "circuit"],
+    },
+    "digestive-system": {
+        "hi": ["पेट", "आंत", "पाचन", "भोजन", "यकृत"],
+        "ta": ["வயிறு", "குடல்", "செரிமானம்", "உணவு", "கல்லீரல்"],
+        "bn": ["পাকস্থলী", "অন্ত্র", "হজম", "খাদ্য", "যকৃৎ"],
+        "en": ["stomach", "intestine", "digestion", "food", "liver"],
+    },
+}
+
+
+def verify_confidence(topic_tag: str, language: str, answer_text: str, self_reported: str) -> str:
+    """Cross-check self-reported confidence against known fact-keys.
+    Only ever downgrades 'high' to 'medium' if none of the expected
+    terms appear in the answer. Never upgrades — absence of a downgrade
+    signal isn't proof of correctness. If no fact-key exists for this
+    topic/language, return self_reported unchanged (trust the model)."""
+    fact_set = VERIFIED_FACT_KEYS.get(topic_tag, {}).get(language)
+    if not fact_set:
+        return self_reported
+    matched = any(term in answer_text for term in fact_set)
+    if not matched and self_reported == "high":
+        return "medium"
+    return self_reported
+
+
 def get_related_tags(topic_tag: str) -> list[str]:
     """Return all tags in the same synonym group as topic_tag, including itself."""
     for group in SYNONYM_GROUPS:
@@ -111,18 +169,34 @@ TOPIC CLASSIFICATION: Classify the doubt into a short snake-case topic_tag (e.g.
 
 DIAGRAM RULE: If topic_tag is one of [{diagram_list}], set diagram_eligible to true. Otherwise false.
 
+DIAGRAM DATA RULE (only when diagram_eligible is true):
+- If topic_tag is "fractions": include a "diagram_data" field with the actual fraction example used in your answer.
+  Format: {{"numerator": <int>, "denominator": <int>}}
+  Use the specific fraction from your answer if one appears naturally; default to {{"numerator": 3, "denominator": 4}} if none.
+- If topic_tag is "pythagoras": include a "diagram_data" field with a real Pythagorean triple relevant to your answer.
+  Format: {{"side_a": <int>, "side_b": <int>, "hypotenuse": <int>}}
+  Use the triangle from your answer if mentioned; default to {{"side_a": 3, "side_b": 4, "hypotenuse": 5}} if none.
+- For all other diagram topics, omit "diagram_data" entirely.
+
 RESPONSE FORMAT — Output in exactly two parts:
 
 PART 1: Your full answer in {lang_name} as plain prose text. No JSON, no special characters, no formatting markers.
 
 PART 2: After your answer, on a new line write exactly: {STREAM_DELIMITER}
 Then on the next line, a valid compact JSON object (no extra whitespace):
-{{"confidence":"high"|"medium"|"low","topic_tag":"<snake-case>","diagram_eligible":true|false}}
+{{"confidence":"high"|"medium"|"low","topic_tag":"<snake-case>","diagram_eligible":true|false,"diagram_data":{{...}}}}
+For fractions: {{"confidence":"high","topic_tag":"fractions","diagram_eligible":true,"diagram_data":{{"numerator":3,"denominator":4}}}}
+For pythagoras: {{"confidence":"high","topic_tag":"pythagoras","diagram_eligible":true,"diagram_data":{{"side_a":3,"side_b":4,"hypotenuse":5}}}}
 
-Example of correct output:
+Example of correct output (photosynthesis — no diagram_data needed):
 प्रकाश संश्लेषण वह प्रक्रिया है जिसमें पौधे सूर्य के प्रकाश से अपना भोजन बनाते हैं।
 |||METADATA|||
-{{"confidence":"high","topic_tag":"photosynthesis","diagram_eligible":true}}"""
+{{"confidence":"high","topic_tag":"photosynthesis","diagram_eligible":true}}
+
+Example of correct output (fractions — diagram_data required):
+भिन्न का अर्थ है किसी चीज़ के बराबर भाग। जैसे 3/4 का अर्थ है 4 में से 3 भाग।
+|||METADATA|||
+{{"confidence":"high","topic_tag":"fractions","diagram_eligible":true,"diagram_data":{{"numerator":3,"denominator":4}}}}"""
 
 
 def build_practice_system_prompt(topic_tag: str, language: str, grade: int = 8) -> str:
